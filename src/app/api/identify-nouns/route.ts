@@ -1,0 +1,190 @@
+import { NextResponse } from 'next/server';
+import axios from 'axios'; // Import axios
+
+// Define the expected structure for items in the response array
+export interface NounCorrection {
+  original_word: string;
+  timestamp: string | null; // Allow null if timestamp isn't available/parseable
+  context_snippet: string;
+  suggestions: string[];
+}
+
+// --- Configuration ---
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'anthropic/claude-3-sonnet-20240229'; // Default model (Changed to Sonnet)
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+// It's good practice to set a site name for OpenRouter attribution
+const YOUR_SITE_URL = 'http://localhost:3000'; // Replace with your deployed URL later
+const YOUR_SITE_NAME = 'Proper Noun QA Tool';
+
+// --- Prompt Engineering ---
+function createPrompt(transcript: string): string {
+  return `Analyze the following transcript to identify potential errors in proper nouns (names of people, places, organizations, brands, etc.). Ignore common nouns. Focus on capitalization errors, misspellings, or inconsistent usage.
+
+For each potential error found, provide:
+1.  \`original_word\`: The word as it appears in the transcript (case-sensitive).
+2.  \`timestamp\`: The timestamp immediately preceding the word, if available in a common format (like HH:MM:SS,ms or MM:SS). If no timestamp is found nearby or it's unparseable, use null.
+3.  \`context_snippet\`: A short snippet (around 10 words) showing the word in context.
+4.  \`suggestions\`: An array of 1-3 plausible corrections or variations for the proper noun.
+
+Format the entire response as a single JSON array containing objects matching this structure:
+\`\`\`json
+[
+  {
+    "original_word": "string",
+    "timestamp": "string | null",
+    "context_snippet": "string",
+    "suggestions": ["string"]
+  }
+]
+\`\`\`
+
+If no potential errors are found, return an empty JSON array \`[]\`.
+
+Transcript:
+---
+${transcript}
+---
+`;
+}
+
+// --- API Route Handler ---
+export async function POST(request: Request) {
+  if (!OPENROUTER_API_KEY) {
+      console.error('OPENROUTER_API_KEY is not set in environment variables.');
+      return NextResponse.json({ error: 'Server configuration error: Missing API key.' }, { status: 500 });
+  }
+
+  try {
+    const body = await request.json();
+    const transcript = body.transcript;
+
+    if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
+      return NextResponse.json({ error: 'Transcript text is required and cannot be empty' }, { status: 400 });
+    }
+
+    console.log("Received transcript snippet:", transcript.substring(0, 100) + "..."); // Log start of transcript
+    console.log(`Calling OpenRouter model: ${OPENROUTER_MODEL}`);
+
+    const prompt = createPrompt(transcript);
+
+    const response = await axios.post(
+      OPENROUTER_API_URL,
+      {
+        model: OPENROUTER_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: "json_object" }, // Request JSON output if model supports it
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          // Recommended headers for OpenRouter attribution
+          'HTTP-Referer': YOUR_SITE_URL,
+          'X-Title': YOUR_SITE_NAME,
+        },
+        timeout: 60000, // 60 second timeout
+      }
+    );
+
+    let corrections: NounCorrection[] = [];
+    if (response.data && response.data.choices && response.data.choices.length > 0) {
+      const messageContent = response.data.choices[0].message?.content;
+      if (messageContent) {
+        let jsonString = ''; // Declare jsonString here to ensure it's available in catch block
+        try {
+          // --- Extract JSON from potential markdown code block --- START
+          let rawContent = messageContent.trim();
+          let successfullyExtracted = false;
+
+          // 1. Try regex for ```json or ```
+          const jsonRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+          const match = rawContent.match(jsonRegex);
+
+          if (match && match[1]) {
+            // If markdown code block found, use its content
+            jsonString = match[1];
+            successfullyExtracted = true;
+            console.log('Successfully extracted JSON using regex.');
+          } else {
+            // 2. If regex fails, find first '[' or '{'
+            console.warn('AI response did not contain ```json code block. Attempting to find JSON start...');
+            const firstBracket = rawContent.indexOf('[');
+            const firstBrace = rawContent.indexOf('{');
+
+            let startIndex = -1;
+            if (firstBracket !== -1 && firstBrace !== -1) {
+              startIndex = Math.min(firstBracket, firstBrace);
+            } else if (firstBracket !== -1) {
+              startIndex = firstBracket;
+            } else {
+              startIndex = firstBrace; // Could be -1 if neither is found
+            }
+
+            if (startIndex !== -1) {
+              jsonString = rawContent.substring(startIndex);
+              successfullyExtracted = true;
+              console.log('Attempting to parse starting from first bracket/brace.');
+            } else {
+                 console.error('Could not find start of JSON ([ or {) in the AI response.');
+                 jsonString = rawContent; // Assign raw content so catch block logs it
+            }
+          }
+          // --- Extract JSON from potential markdown code block --- END
+
+          if (!successfullyExtracted) {
+             // Throw an error if we couldn't confidently extract JSON
+             throw new Error("Failed to find JSON block in AI response content.");
+          }
+
+          // Attempt to parse the extracted JSON string
+          const parsedJson = JSON.parse(jsonString);
+
+          // Basic validation: Ensure it's an array
+          if (Array.isArray(parsedJson)) {
+            // TODO: Add more robust validation for each item in the array
+            // to ensure it matches the NounCorrection interface.
+            corrections = parsedJson;
+            console.log(`Successfully parsed ${corrections.length} corrections from AI response.`);
+          } else {
+             console.error('AI response content was not a JSON array:', parsedJson);
+             throw new Error('AI response was not in the expected array format.');
+          }
+        } catch (parseError) {
+          console.error('Failed to parse JSON from AI response content:', parseError);
+          console.error('Raw AI response content was:', messageContent); // Log original raw content
+          console.error('Attempted to parse JSON string:', jsonString); // Log the extracted string
+          // Don't return the raw response to the client for security/privacy.
+          return NextResponse.json({ error: 'Failed to process AI response (invalid JSON)' }, { status: 500 });
+        }
+      } else {
+         console.error('No content found in AI response choice message:', response.data.choices[0]);
+         return NextResponse.json({ error: 'Failed to process AI response (empty message)' }, { status: 500 });
+      }
+    } else {
+      console.warn('No choices returned from OpenRouter API:', response.data);
+      // Return empty array if no corrections found or API response structure is unexpected
+    }
+
+    return NextResponse.json(corrections);
+
+  } catch (error) {
+     console.error('Error in identify-nouns API route:', error);
+     let errorMessage = 'Internal Server Error';
+     let statusCode = 500;
+
+     if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', error.response?.data || error.message);
+        errorMessage = error.response?.data?.error?.message || error.message || 'Error calling AI service';
+        statusCode = error.response?.status || 500;
+     } else if (error instanceof Error) {
+        errorMessage = error.message;
+     }
+     // Ensure generic message for unexpected errors
+     if (statusCode === 500 && errorMessage === 'Internal Server Error') {
+         errorMessage = 'An unexpected error occurred while processing the transcript.'
+     }
+
+    return NextResponse.json({ error: errorMessage }, { status: statusCode });
+  }
+} 
