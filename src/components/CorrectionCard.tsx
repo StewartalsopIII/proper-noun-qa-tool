@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NounCorrection } from '@/app/api/identify-nouns/route';
 
 export interface CorrectionUpdateData {
@@ -14,27 +14,38 @@ interface CorrectionCardProps {
 }
 
 const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate }) => {
-  const [editedWord, setEditedWord] = useState<string>(correction.original_word);
+  const [manualEditValue, setManualEditValue] = useState<string>(correction.original_word);
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const initialWordForUpdate = correction.original_word; // Capture initial word
+  const initialWordForUpdate = correction.original_word; // Capture initial word for updates
+
+  useEffect(() => {
+    if (!isEditing) {
+      setManualEditValue(correction.original_word);
+    }
+  }, [correction.original_word, isEditing]);
 
   const handleSelectSuggestion = (suggestion: string) => {
-    console.log(`Selected suggestion: ${suggestion} for ${initialWordForUpdate}`);
-    onUpdate({
+    console.log(`[CorrectionCard] handleSelectSuggestion called with suggestion: '${suggestion}' for initial word: '${initialWordForUpdate}'`); // DEBUG LOG
+    const updatePayload: CorrectionUpdateData = {
       initialWord: initialWordForUpdate,
       updatedCorrection: { ...correction, original_word: suggestion }
-    });
+    };
+    console.log('[CorrectionCard] Calling onUpdate with payload:', updatePayload); // DEBUG LOG
+    onUpdate(updatePayload);
+    if (isEditing) {
+      setIsEditing(false);
+    }
   };
 
   const handleEditChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setEditedWord(event.target.value);
+    setManualEditValue(event.target.value);
   };
 
   const handleSaveEdit = () => {
-    console.log(`Saved edit: ${editedWord} for ${initialWordForUpdate}`);
+    console.log(`Saved edit: ${manualEditValue} for ${initialWordForUpdate}`);
     onUpdate({
       initialWord: initialWordForUpdate,
-      updatedCorrection: { ...correction, original_word: editedWord }
+      updatedCorrection: { ...correction, original_word: manualEditValue }
     });
     setIsEditing(false);
   };
@@ -43,15 +54,23 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
     console.log(`Ignored suggestion for: ${initialWordForUpdate}`);
     onUpdate({
       initialWord: initialWordForUpdate,
-      updatedCorrection: null // Signal to ignore/remove this card
+      updatedCorrection: null
     });
+    if (isEditing) {
+      setIsEditing(false);
+    }
   };
+
+  const handleStartEdit = () => {
+    setManualEditValue(correction.original_word);
+    setIsEditing(true);
+  }
 
   return (
     <div className="bg-white p-4 rounded-lg shadow border border-gray-200 mb-4">
       <div className="mb-3">
         <p className="text-sm text-gray-600 mb-1">Original Word (at {correction.timestamp || 'N/A'}):</p>
-        <p className="text-lg font-medium text-red-600 bg-red-50 px-2 py-1 rounded inline-block">{editedWord}</p>
+        <p className="text-lg font-medium text-red-600 bg-red-50 px-2 py-1 rounded inline-block">{correction.original_word}</p>
       </div>
 
       <div className="mb-3">
@@ -80,7 +99,7 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
           <div className="flex items-center gap-2">
             <input
               type="text"
-              value={editedWord}
+              value={manualEditValue}
               onChange={handleEditChange}
               className="flex-grow p-2 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
             />
@@ -99,7 +118,7 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
           </div>
         ) : (
           <button
-            onClick={() => setIsEditing(true)}
+            onClick={handleStartEdit}
             className="px-3 py-1 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition-colors text-sm"
           >
             Edit Manually
