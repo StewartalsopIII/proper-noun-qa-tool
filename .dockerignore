@@ -1,0 +1,26 @@
+# Docker build context exclusions
+
+# Node dependencies
+node_modules
+
+# Git directory
+.git
+
+# Next.js build output directory
+.next
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Environment variables
+.env*
+
+# Log files
+*.log
+
+# Documentation
+README.md
+
+# TypeScript build info
+tsconfig.tsbuildinfo 

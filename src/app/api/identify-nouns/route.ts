@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         let jsonString = ''; // Declare jsonString here to ensure it's available in catch block
         try {
           // --- Extract JSON from potential markdown code block --- START
-          let rawContent = messageContent.trim();
+          const rawContent = messageContent.trim();
           let successfullyExtracted = false;
 
           // 1. Try regex for ```json or ```

@@ -5,13 +5,11 @@ import { NounCorrection } from '@/app/api/identify-nouns/route';
 import CorrectionCard, { CorrectionUpdateData } from './CorrectionCard';
 
 interface QAInterfaceProps {
-  originalTranscript: string; // Keep original for context if needed later
   potentialCorrections: NounCorrection[];
   onComplete: (finalUpdateData: CorrectionUpdateData[]) => void;
 }
 
 const QAInterface: React.FC<QAInterfaceProps> = ({ 
-  originalTranscript, 
   potentialCorrections, 
   onComplete 
 }) => {

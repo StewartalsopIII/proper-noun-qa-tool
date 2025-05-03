@@ -79,7 +79,7 @@ const TranscriptInput: React.FC<TranscriptInputProps> = ({ onTranscriptSubmit, i
           ) : isDragActive ? (
             <p className="text-indigo-600">Drop the transcript file here ...</p>
           ) : (
-            <p className="text-gray-500">Drag 'n' drop a .txt, .md, .vtt, or .srt file here, or click to select file</p>
+            <p className="text-gray-500">Drag &apos;n&apos; drop a .txt, .md, .vtt, or .srt file here, or click to select file</p>
           )}
         </div>
 

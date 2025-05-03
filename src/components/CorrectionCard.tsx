@@ -18,6 +18,11 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const initialWordForUpdate = correction.original_word; // Capture initial word for updates
 
+  // Ensure suggestions is always an array to prevent runtime errors
+  const suggestionsArray: string[] = Array.isArray(correction.suggestions)
+    ? correction.suggestions
+    : (correction.suggestions ? [correction.suggestions] : []);
+
   useEffect(() => {
     if (!isEditing) {
       setManualEditValue(correction.original_word);
@@ -81,7 +86,7 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
       <div className="mb-4">
         <p className="text-sm text-gray-600 mb-1">Suggestions:</p>
         <div className="flex flex-wrap gap-2">
-          {correction.suggestions.map((suggestion, index) => (
+          {suggestionsArray.map((suggestion, index) => (
             <button
               key={index}
               onClick={() => handleSelectSuggestion(suggestion)}
@@ -90,7 +95,7 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
               {suggestion}
             </button>
           ))}
-          {correction.suggestions.length === 0 && <p className="text-sm text-gray-500">No suggestions available.</p>}
+          {suggestionsArray.length === 0 && <p className="text-sm text-gray-500">No suggestions available.</p>}
         </div>
       </div>
 

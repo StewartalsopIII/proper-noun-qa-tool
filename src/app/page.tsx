@@ -146,7 +146,6 @@ export default function Home() {
           {/* <pre className="mt-4 p-4 bg-white border rounded text-sm max-h-96 overflow-auto">{JSON.stringify(corrections, null, 2)}</pre> */}
            
             <QAInterface
-              originalTranscript={transcript}
               potentialCorrections={corrections}
               onComplete={handleCorrectionsComplete}
             /> 
