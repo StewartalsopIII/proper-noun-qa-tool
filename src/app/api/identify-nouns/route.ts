@@ -19,27 +19,18 @@ const YOUR_SITE_NAME = 'Proper Noun QA Tool';
 
 // --- Prompt Engineering ---
 function createPrompt(transcript: string): string {
-  return `Analyze the following transcript to identify potential errors in proper nouns (names of people, places, organizations, brands, etc.). Ignore common nouns. Focus on capitalization errors, misspellings, or inconsistent usage.
+  return `Analyze this transcript in two phases:
 
-For each potential error found, provide:
-1.  \`original_word\`: The word as it appears in the transcript (case-sensitive).
-2.  \`timestamp\`: The timestamp immediately preceding the word, if available in a common format (like HH:MM:SS,ms or MM:SS). If no timestamp is found nearby or it's unparseable, use null.
-3.  \`context_snippet\`: A short snippet (around 10 words) showing the word in context.
-4.  \`suggestions\`: An array of 1-3 plausible corrections or variations for the proper noun.
+PHASE 1: Extract ALL proper nouns (people, places, organizations, brands).
+PHASE 2: For each proper noun, determine if it might have spelling variations or corrections.
 
-Format the entire response as a single JSON array containing objects matching this structure:
-\`\`\`json
-[
-  {
-    "original_word": "string",
-    "timestamp": "string | null",
-    "context_snippet": "string",
-    "suggestions": ["string"]
-  }
-]
-\`\`\`
+For each proper noun, provide:
+1.  \`original_word\`: The proper noun as written.
+2.  \`timestamp\`: Nearby timestamp if available.
+3.  \`context_snippet\`: Surrounding context.
+4.  \`suggestions\`: Probable alternative spellings, capitalizations, or [original] if it appears correct.
 
-If no potential errors are found, return an empty JSON array \`[]\`.
+Format as a JSON array.
 
 Transcript:
 ---
