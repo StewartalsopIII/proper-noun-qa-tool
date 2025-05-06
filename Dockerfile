@@ -1,6 +1,10 @@
 # Use the official Node.js 23.11.0 Alpine image as a base
 FROM node:23.11.0-alpine
 
+# Passcode build-time injection
+ARG NEXT_PUBLIC_PASSCODE=changeme
+ENV NEXT_PUBLIC_PASSCODE=$NEXT_PUBLIC_PASSCODE
+
 # Set the working directory in the container
 WORKDIR /app
 

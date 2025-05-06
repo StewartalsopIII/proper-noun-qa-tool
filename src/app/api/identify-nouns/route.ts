@@ -82,10 +82,17 @@ export async function POST(request: Request) {
     if (response.data && response.data.choices && response.data.choices.length > 0) {
       const messageContent = response.data.choices[0].message?.content;
       if (messageContent) {
+        // --- New Diagnostic Logs ---
+        console.log('[identify-nouns] Response content type:', response.headers?.['content-type']);
+        console.log('[identify-nouns] First 200 chars of content:', messageContent.substring(0, 200));
+        console.log('[identify-nouns] Content length:', messageContent.length);
         let jsonString = ''; // Declare jsonString here to ensure it's available in catch block
         try {
           // --- Extract JSON from potential markdown code block --- START
           const rawContent = messageContent.trim();
+          console.log('[identify-nouns] Trimmed content length:', rawContent.length);
+          console.log('[identify-nouns] Contains ```json:', rawContent.includes('```json'));
+          console.log('[identify-nouns] Contains brackets:', rawContent.includes('[') || rawContent.includes('{'));
           let successfullyExtracted = false;
 
           // 1. Try regex for ```json or ```
@@ -96,7 +103,7 @@ export async function POST(request: Request) {
             // If markdown code block found, use its content
             jsonString = match[1];
             successfullyExtracted = true;
-            console.log('Successfully extracted JSON using regex.');
+            // console.log('Successfully extracted JSON using regex.'); // removed verbose log
           } else {
             // 2. If regex fails, find first '[' or '{'
             console.warn('AI response did not contain ```json code block. Attempting to find JSON start...');
@@ -115,7 +122,7 @@ export async function POST(request: Request) {
             if (startIndex !== -1) {
               jsonString = rawContent.substring(startIndex);
               successfullyExtracted = true;
-              console.log('Attempting to parse starting from first bracket/brace.');
+              // console.log('Attempting to parse starting from first bracket/brace.'); // removed verbose log
             } else {
                  console.error('Could not find start of JSON ([ or {) in the AI response.');
                  jsonString = rawContent; // Assign raw content so catch block logs it
@@ -128,23 +135,55 @@ export async function POST(request: Request) {
              throw new Error("Failed to find JSON block in AI response content.");
           }
 
+          // ---------- EXTRA DIAGNOSTICS BEGIN ----------
+          console.log('[diagnostic] rawContent starts with:', rawContent.slice(0, 120));
+          console.log('[diagnostic] rawContent ends with:', rawContent.slice(-120));
+
+          console.log('[diagnostic] jsonString first 120 chars:', jsonString.slice(0, 120));
+          console.log('[diagnostic] jsonString last 120 chars:', jsonString.slice(-120));
+
+          const openBraces  = (jsonString.match(/{/g) || []).length;
+          const closeBraces = (jsonString.match(/}/g) || []).length;
+          const openBrack   = (jsonString.match(/\[/g) || []).length;
+          const closeBrack  = (jsonString.match(/]/g) || []).length;
+          console.log(`[diagnostic] brace balance { } => ${openBraces} / ${closeBraces}`);
+          console.log(`[diagnostic] bracket balance [ ] => ${openBrack} / ${closeBrack}`);
+
+          console.log('[diagnostic] contains single quotes?:', jsonString.includes("': '"));
+          console.log('[diagnostic] contains trailing commas?:', /,\s*[}\]]/.test(jsonString));
+          // ---------- EXTRA DIAGNOSTICS END ----------
+
           // Attempt to parse the extracted JSON string
+          console.log('[identify-nouns] Attempting to parse first 200 chars of jsonString:', jsonString.substring(0, 200));
           const parsedJson = JSON.parse(jsonString);
 
-          // Basic validation: Ensure it's an array
           if (Array.isArray(parsedJson)) {
-            // TODO: Add more robust validation for each item in the array
-            // to ensure it matches the NounCorrection interface.
             corrections = parsedJson;
-            console.log(`Successfully parsed ${corrections.length} corrections from AI response.`);
+            console.log(`[identify-nouns] Parsed ${corrections.length} corrections from top-level array.`);
           } else {
-             console.error('AI response content was not a JSON array:', parsedJson);
-             throw new Error('AI response was not in the expected array format.');
+            // Look for the first property that is an array of objects with original_word
+            const candidateKey = Object.keys(parsedJson).find(k => {
+              const v = parsedJson[k];
+              return Array.isArray(v) &&
+                     v.length > 0 &&
+                     typeof v[0] === 'object' &&
+                     'original_word' in v[0];
+            });
+
+            if (candidateKey) {
+              corrections = parsedJson[candidateKey];
+              console.log(`[identify-nouns] Parsed ${corrections.length} corrections from key "${candidateKey}".`);
+            } else {
+              console.error('AI response JSON did not contain an array of corrections:', parsedJson);
+              throw new Error('AI response was not in the expected array format.');
+            }
           }
         } catch (parseError) {
           console.error('Failed to parse JSON from AI response content:', parseError);
-          console.error('Raw AI response content was:', messageContent); // Log original raw content
-          console.error('Attempted to parse JSON string:', jsonString); // Log the extracted string
+          console.error('Content starts with:', messageContent.substring(0, 100));
+          console.error('Content ends with:', messageContent.substring(Math.max(messageContent.length - 100, 0)));
+          console.error('Unescaped quote count:', (messageContent.match(/[^\\]"/g) || []).length);
+          console.error('Attempted to parse JSON string (first 200 chars):', jsonString.substring(0, 200));
           // Don't return the raw response to the client for security/privacy.
           return NextResponse.json({ error: 'Failed to process AI response (invalid JSON)' }, { status: 500 });
         }
