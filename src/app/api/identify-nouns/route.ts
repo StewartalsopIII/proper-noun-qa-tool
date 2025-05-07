@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import axios from 'axios'; // Import axios
+import { auth } from "@clerk/nextjs/server";
 
 // Define the expected structure for items in the response array
 export interface NounCorrection {
@@ -41,6 +42,12 @@ ${transcript}
 
 // --- API Route Handler ---
 export async function POST(request: Request) {
+  // Authentication check
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized: Authentication required" }, { status: 401 });
+  }
+
   if (!OPENROUTER_API_KEY) {
       console.error('OPENROUTER_API_KEY is not set in environment variables.');
       return NextResponse.json({ error: 'Server configuration error: Missing API key.' }, { status: 500 });
