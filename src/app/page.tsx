@@ -10,18 +10,7 @@ import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 
 type AppStep = 'input' | 'qa' | 'export';
 
-// --- Passcode Configuration ---
-// Replace "changeme" with a strong passcode or expose via NEXT_PUBLIC_PASSCODE env var.
-const CORRECT_PASSCODE = (process.env.NEXT_PUBLIC_PASSCODE ?? 'changeme').replace(/^['"](.*)['"]$/, '$1');
-// --- End Passcode Configuration ---
-
 export default function Home() {
-  // --- Passcode State ---
-  const [passcode, setPasscode] = useState<string>('');
-  const [isVerified, setIsVerified] = useState<boolean>(false);
-  const [passcodeError, setPasscodeError] = useState<string>('');
-  // --- End Passcode State ---
-
   const [currentStep, setCurrentStep] = useState<AppStep>('input');
   const [transcript, setTranscript] = useState<string>('');
   const [corrections, setCorrections] = useState<NounCorrection[]>([]);
@@ -29,26 +18,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // --- Passcode Verification Handler ---
-  const handleVerifyPasscode = () => {
-    if (passcode.trim().replace(/^['"](.*)['"]$/, '$1') === CORRECT_PASSCODE) {
-      setIsVerified(true);
-      setPasscodeError('');
-    } else {
-      setIsVerified(false);
-      setPasscodeError('Incorrect passcode. Please try again.');
-    }
-  };
-  // --- End Passcode Verification Handler ---
-
   const handleTranscriptSubmit = async (submittedTranscript: string) => {
-    // --- Passcode Guard ---
-    if (!isVerified) {
-      setError('Passcode not verified.');
-      return;
-    }
-    // --- End Passcode Guard ---
-
     setIsLoading(true);
     setError(null);
     setTranscript(submittedTranscript);
@@ -95,34 +65,17 @@ export default function Home() {
   // TODO: Implement handleCorrectionsComplete in Phase 5
   // Updated to receive CorrectionUpdateData[]
   const handleCorrectionsComplete = (finalUpdateData: CorrectionUpdateData[]) => {
-    // --- Passcode Guard ---
-    if (!isVerified) {
-      setError('Passcode not verified.');
-      return;
-    }
-    // --- End Passcode Guard ---
-
-    console.log('Corrections submitted from QA:', finalUpdateData);
-
     // --- Apply Corrections (Using explicit initial/final words) ---
     let updatedTranscript = transcript; // Start with the original
 
     finalUpdateData.forEach(data => {
-      // data.updatedCorrection should not be null here due to filtering in QAInterface
-      if (data.updatedCorrection) { 
+      if (data.updatedCorrection) {
         const originalWordToFind = data.initialWord;
-        const newWord = data.updatedCorrection.original_word; // This is the final word
+        const newWord = data.updatedCorrection.original_word;
 
         if (originalWordToFind && originalWordToFind !== newWord) {
-            console.log(`Replacing first instance of '${originalWordToFind}' with '${newWord}'`);
-            // Replace only the first occurrence to minimize incorrect replacements
-            // Use a regex with word boundary ('\b') if possible, but simple replace for now
-            updatedTranscript = updatedTranscript.replace(originalWordToFind, newWord);
-        } else {
-            // Log if original and new are the same (no change needed)
-            if (originalWordToFind === newWord) {
-                console.log(`No change for '${originalWordToFind}'`);
-            }
+          // Replace only the first occurrence to minimize incorrect replacements
+          updatedTranscript = updatedTranscript.replace(originalWordToFind, newWord);
         }
       }
     });
@@ -171,96 +124,67 @@ export default function Home() {
         </div>
       )}
 
-      {/* --- Passcode Input Section --- */}
-      {!isVerified && (
-        <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold mb-4 text-gray-700">Enter Passcode</h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="password"
-              value={passcode}
-              onChange={(e) => {
-                setPasscode(e.target.value);
-                if (passcodeError) setPasscodeError('');
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && handleVerifyPasscode()}
-              placeholder="Passcode"
-              className={`flex-grow p-2 border rounded ${passcodeError ? 'border-red-500' : 'border-gray-300'}`}
-            />
-            <button
-              onClick={handleVerifyPasscode}
-              className="px-4 py-2 bg-blue-600 text-white font-semibold rounded hover:bg-blue-700 transition-colors"
-            >
-              Verify
-            </button>
-          </div>
-          {passcodeError && <p className="mt-2 text-sm text-red-600">{passcodeError}</p>}
+      {/* --- Main App Content --- */}
+      <>
+
+      {currentStep === 'input' && (
+        <TranscriptInput 
+          onTranscriptSubmit={handleTranscriptSubmit} 
+          isLoading={isLoading} 
+        />
+      )}
+
+      {currentStep === 'qa' && (
+        // QAInterface will be implemented in Phase 4
+        // For now, show a placeholder or basic info
+        <div className="w-full max-w-6xl">
+          <button 
+            onClick={handleGoBackToInput}
+            className="mb-4 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+          >
+            &larr; Back to Input
+          </button>
+          <h2 className="text-xl font-semibold mb-4">Review Suggestions</h2>
+          {/* Temporary display - replace with QAInterface */}
+          {/* <p>Transcript loaded. {corrections.length} potential corrections identified (API returned dummy data for now).</p> */}
+          {/* <pre className="mt-4 p-4 bg-white border rounded text-sm max-h-96 overflow-auto">{JSON.stringify(corrections, null, 2)}</pre> */}
+           
+            <QAInterface
+              potentialCorrections={corrections}
+              onComplete={handleCorrectionsComplete}
+            /> 
+          {/* */}
         </div>
       )}
-      {/* --- End Passcode Input Section --- */}
 
-      {/* Only show main app when verified */}
-      {isVerified && (
-        <>
-          {currentStep === 'input' && (
-            <TranscriptInput 
-              onTranscriptSubmit={handleTranscriptSubmit} 
-              isLoading={isLoading} 
-            />
-          )}
-
-          {currentStep === 'qa' && (
-            // QAInterface will be implemented in Phase 4
-            // For now, show a placeholder or basic info
-            <div className="w-full max-w-6xl">
-              <button 
-                onClick={handleGoBackToInput}
-                className="mb-4 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-              >
-                &larr; Back to Input
-              </button>
-              <h2 className="text-xl font-semibold mb-4">Review Suggestions</h2>
-              {/* Temporary display - replace with QAInterface */}
-              {/* <p>Transcript loaded. {corrections.length} potential corrections identified (API returned dummy data for now).</p> */}
-              {/* <pre className="mt-4 p-4 bg-white border rounded text-sm max-h-96 overflow-auto">{JSON.stringify(corrections, null, 2)}</pre> */}
-               
-                <QAInterface
-                  potentialCorrections={corrections}
-                  onComplete={handleCorrectionsComplete}
-                /> 
-              {/* */}
-            </div>
-          )}
-
-          {currentStep === 'export' && (
-            // Export view will be implemented in Phase 5
-            <div className="w-full max-w-4xl text-center">
-               <button 
-                onClick={handleGoBackToInput}
-                className="mb-4 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-              >
-                &larr; Start Over
-              </button>
-              <h2 className="text-xl font-semibold mb-4">Export Corrected Transcript</h2>
-              {/* Display corrected transcript in a textarea */}
-              <textarea
-                readOnly
-                value={correctedTranscript}
-                className="w-full h-96 p-3 border border-gray-300 rounded-md bg-white text-left font-mono text-sm mb-4 text-gray-900"
-                placeholder="Corrected transcript will appear here..."
-              />
-              {/* Add Export component/buttons here */}
-              <button
-                onClick={downloadMarkdown}
-                disabled={!correctedTranscript}
-                className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                Download .md File
-              </button>
-            </div>
-          )}
-        </>
+      {currentStep === 'export' && (
+        // Export view will be implemented in Phase 5
+        <div className="w-full max-w-4xl text-center">
+           <button 
+            onClick={handleGoBackToInput}
+            className="mb-4 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
+          >
+            &larr; Start Over
+          </button>
+          <h2 className="text-xl font-semibold mb-4">Export Corrected Transcript</h2>
+          {/* Display corrected transcript in a textarea */}
+          <textarea
+            readOnly
+            value={correctedTranscript}
+            className="w-full h-96 p-3 border border-gray-300 rounded-md bg-white text-left font-mono text-sm mb-4 text-gray-900"
+            placeholder="Corrected transcript will appear here..."
+          />
+          {/* Add Export component/buttons here */}
+          <button
+            onClick={downloadMarkdown}
+            disabled={!correctedTranscript}
+            className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          >
+            Download .md File
+          </button>
+        </div>
       )}
+      </>
     </main>
     </SignedIn>
     </>

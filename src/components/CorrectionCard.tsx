@@ -30,12 +30,10 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
   }, [correction.original_word, isEditing]);
 
   const handleSelectSuggestion = (suggestion: string) => {
-    console.log(`[CorrectionCard] handleSelectSuggestion called with suggestion: '${suggestion}' for initial word: '${initialWordForUpdate}'`); // DEBUG LOG
     const updatePayload: CorrectionUpdateData = {
       initialWord: initialWordForUpdate,
       updatedCorrection: { ...correction, original_word: suggestion }
     };
-    console.log('[CorrectionCard] Calling onUpdate with payload:', updatePayload); // DEBUG LOG
     onUpdate(updatePayload);
     if (isEditing) {
       setIsEditing(false);
@@ -47,7 +45,6 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
   };
 
   const handleSaveEdit = () => {
-    console.log(`Saved edit: ${manualEditValue} for ${initialWordForUpdate}`);
     onUpdate({
       initialWord: initialWordForUpdate,
       updatedCorrection: { ...correction, original_word: manualEditValue }
@@ -56,7 +53,6 @@ const CorrectionCard: React.FC<CorrectionCardProps> = ({ correction, onUpdate })
   };
 
   const handleIgnore = () => {
-    console.log(`Ignored suggestion for: ${initialWordForUpdate}`);
     onUpdate({
       initialWord: initialWordForUpdate,
       updatedCorrection: null

@@ -1,7 +1,7 @@
 # Use the official Node.js 23.11.0 Alpine image as a base
 FROM node:23.11.0-alpine
 
-# Clerk publishable key build-time injection (replacing passcode)
+# Clerk publishable key build-time injection
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 

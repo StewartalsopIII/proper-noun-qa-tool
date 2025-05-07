@@ -24,27 +24,19 @@ const QAInterface: React.FC<QAInterfaceProps> = ({
   }, [potentialCorrections]);
 
   const handleCorrectionUpdate = (index: number, updateData: CorrectionUpdateData) => {
-    console.log(`[QAInterface] handleCorrectionUpdate called for index: ${index} with data:`, updateData); // DEBUG LOG
     setCurrentUpdateData(prev => {
-      console.log('[QAInterface] Previous state:', prev); // DEBUG LOG
       const newData = [...prev];
       if (updateData.updatedCorrection === null) {
-        // Ensure we handle the case where the update might be null (for ignore)
-        // even though this specific flow is for suggestion selection.
-        console.log(`[QAInterface] Setting item at index ${index} to null (ignored).`); // DEBUG LOG
         newData[index] = { ...newData[index], updatedCorrection: null }; 
       } else {
-         console.log(`[QAInterface] Updating item at index ${index} with new word: \'${updateData.updatedCorrection.original_word}\'`); // DEBUG LOG
         newData[index] = updateData;
       }
-      console.log('[QAInterface] New state (before setting):', newData); // DEBUG LOG
       return newData;
     });
   };
 
   const handleFinishReview = () => {
     const finalData = currentUpdateData.filter(data => data.updatedCorrection !== null);
-    console.log("Finishing review with data:", finalData);
     onComplete(finalData); 
   };
 

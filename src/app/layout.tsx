@@ -23,10 +23,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Add console log to check if Clerk keys are loaded
-  console.log("Clerk key exists:", !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
-  console.log("Clerk key value:", process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.substring(0, 5) + "...");
-  
   return (
     <ClerkProvider>
       <html lang="en">

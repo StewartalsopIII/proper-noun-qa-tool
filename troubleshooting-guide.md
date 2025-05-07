@@ -100,17 +100,6 @@ if (Array.isArray(parsedJson)) {
    docker rm proper-qa
    ```
 
-### 4. Environment Variables Issues
-
-**Symptoms:**
-- Incorrect passcode error
-- API keys not being recognized
-
-**Solution:**
-Be careful with `NEXT_PUBLIC_` prefixed variables in Docker. These need to be:
-1. Added at build time for client-side code: `--build-arg NEXT_PUBLIC_PASSCODE=xyz`
-2. Added at runtime for server-only code: `--env-file qa.env`
-
 ## Diagnostic Tools Added
 
 ### Enhanced Logging
