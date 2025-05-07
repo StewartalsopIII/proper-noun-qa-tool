@@ -1,9 +1,9 @@
 # Use the official Node.js 23.11.0 Alpine image as a base
 FROM node:23.11.0-alpine
 
-# Passcode build-time injection
-ARG NEXT_PUBLIC_PASSCODE=changeme
-ENV NEXT_PUBLIC_PASSCODE=$NEXT_PUBLIC_PASSCODE
+# Clerk publishable key build-time injection (replacing passcode)
+ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
 # Set the working directory in the container
 WORKDIR /app
@@ -25,4 +25,4 @@ RUN npm run build
 EXPOSE 3000
 
 # Command to run the application
-CMD ["npm", "start"] 
+CMD ["npm", "start"]
