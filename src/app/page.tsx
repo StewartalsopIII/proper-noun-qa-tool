@@ -6,6 +6,7 @@ import QAInterface from '@/components/QAInterface'; // Placeholder import
 import { NounCorrection } from '@/app/api/identify-nouns/route'; // Import the interface
 import { CorrectionUpdateData } from '@/components/CorrectionCard'; // Import the type
 import axios from 'axios';
+import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 
 type AppStep = 'input' | 'qa' | 'export';
 
@@ -148,6 +149,15 @@ export default function Home() {
   };
 
   return (
+    <>
+    <SignedOut>
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50">
+        <h2 className="text-xl font-semibold mb-4">Please sign in to use the Proper Noun QA Tool</h2>
+        <SignInButton mode="modal" />
+      </div>
+    </SignedOut>
+
+    <SignedIn>
     <main className="flex min-h-screen flex-col items-center justify-start p-6 md:p-12 bg-gray-50">
       <h1 className="text-2xl md:text-3xl font-bold mb-6 text-gray-800">
         Proper Noun QA Tool
@@ -252,5 +262,7 @@ export default function Home() {
         </>
       )}
     </main>
+    </SignedIn>
+    </>
   );
 }
